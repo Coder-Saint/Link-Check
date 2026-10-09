@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link check: is this link safe to open?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EFF2EC; --card:#FBFCFA; --ink:#16221E; --muted:#5B6B65; --line:#D3DBD4; --accent:#0D5C63;
+  --low:#23794F; --mid:#B7791F; --high:#B3261E; --v:var(--muted);
+  --sans:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;color:var(--ink);font:400 17px/1.5 var(--sans);padding:clamp(20px,5vw,64px) clamp(16px,4vw,48px) 80px}
+main{max-width:1000px;margin:0 auto}
+h1{font-size:clamp(34px,6vw,60px);line-height:1.02;letter-spacing:-.02em;font-weight:800;margin:0 0 14px;max-width:14ch}
+.lede{color:var(--muted);margin:0 0 32px;max-width:52ch}
+form{display:flex;gap:10px;flex-wrap:wrap}
+input{flex:1 1 320px;min-width:0;font:500 17px var(--mono);padding:16px 18px;border:2px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink)}
+button{font:600 17px var(--sans);cursor:pointer}
+.go{padding:16px 28px;border:2px solid var(--accent);background:var(--accent);color:#fff;border-radius:10px}
+.go:disabled{opacity:.6;cursor:progress}
+:focus-visible{outline:3px solid #E0A400;outline-offset:2px}
+.try{margin:14px 0 0;color:var(--muted);font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.try button{font:500 13px var(--mono);padding:5px 10px;border:1px solid var(--line);background:transparent;border-radius:999px;color:var(--ink)}
+.try button:hover{border-color:var(--ink)}
+#out{margin-top:44px}
+.verdict{display:flex;gap:clamp(18px,4vw,44px);align-items:center;flex-wrap:wrap;padding-bottom:28px;border-bottom:2px solid var(--ink)}
+.gauge{width:min(300px,100%);flex:none;position:relative}
+.gauge svg{display:block;width:100%;overflow:visible}
+.track{stroke:var(--line)} .val{stroke:var(--v);transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1)}
+.gauge .num{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-weight:800;font-size:54px;line-height:1;letter-spacing:-.03em}
+.gauge .num small{display:block;font:500 13px var(--sans);color:var(--muted);letter-spacing:0;margin-top:4px}
+.vtext h2{font-size:clamp(28px,4.4vw,42px);line-height:1.05;margin:0 0 8px;letter-spacing:-.015em;color:var(--v)}
+.vtext p{margin:0;color:var(--muted);max-width:46ch}
+.dest{font:500 14px var(--mono);word-break:break-all;margin-top:12px;color:var(--ink)}
+.cols{display:grid;grid-template-columns:1.3fr 1fr;gap:clamp(24px,4vw,56px);margin-top:30px}
+@media(max-width:780px){.cols{grid-template-columns:1fr}}
+h3{font-size:20px;margin:0 0 14px;letter-spacing:-.01em}
+ul,ol{list-style:none;margin:0;padding:0}
+.f{padding:12px 14px 12px 16px;margin-bottom:10px;background:var(--card);border-left:5px solid var(--line);border-radius:0 8px 8px 0;display:grid;grid-template-columns:1fr auto;gap:2px 12px}
+.f b{font-weight:600}.f span{grid-column:1;color:var(--muted);font-size:16px}
+.f em{grid-column:2;grid-row:1/3;align-self:center;font:500 15px var(--mono);font-style:normal}
+.f.high{border-color:var(--high)}.f.high em{color:var(--high)}
+.f.medium{border-color:var(--mid)}.f.medium em{color:var(--mid)}
+.f.low{border-color:#C9A24A}.f.low em{color:var(--mid)}
+.f.ok{border-color:var(--low);background:transparent}.f.ok b::before{content:"\2713  ";color:var(--low)}
+.f.info{border-color:var(--accent)}
+.hop{position:relative;padding:0 0 18px 26px;border-left:2px solid var(--ink);margin-left:6px}
+.hop:last-child{border-color:transparent;padding-bottom:0}
+.hop::before{content:"";position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--paper);border:2px solid var(--ink)}
+.hop.end::before{background:var(--v);border-color:var(--v)}
+.hop code{font:500 13px var(--mono);word-break:break-all;display:block}
+.hop .st{font:500 12px var(--mono);color:var(--muted)}
+.hop .you{font-weight:600;font-size:14px;color:var(--v)}
+.note{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px;max-width:70ch}
+.err{margin-top:24px;padding:14px 16px;border-left:5px solid var(--high);background:var(--card)}
+.busy{margin-top:30px;color:var(--muted);font:500 15px var(--mono)}
+#out[data-v="low-risk"]{--v:var(--low)}#out[data-v="suspicious"]{--v:var(--mid)}#out[data-v="dangerous"]{--v:var(--high)}
+@media (prefers-reduced-motion:reduce){.val{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Is this link safe to open?</h1>
+  <p class="lede">Paste a link. We follow it for you, check the domain and the page, and explain what we find in plain words.</p>
+  <form id="f">
+    <input id="u" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste a link here" aria-label="Link to check" required>
+    <button class="go" id="go" type="submit">Check link</button>
+  </form>
+  <div class="try">Try one:
+    <button type="button" data-u="http://paypal.com@example.org/login">paypal.com@example.org/login</button>
+    <button type="button" data-u="https://paypa1-secure-login.xyz">paypa1-secure-login.xyz</button>
+    <button type="button" data-u="https://example.com">example.com</button>
+  </div>
+  <div id="out" hidden aria-live="polite"></div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const form = $('#f'), input = $('#u'), go = $('#go'), out = $('#out');
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const SUBS = {
+  'low-risk': 'None of our checks raised a concern. That is not a guarantee, so stay careful with anything asking for passwords or payments.',
+  'suspicious': 'Some things about this link are off. Don\u2019t sign in or pay on it unless you can confirm it from another source.',
+  'dangerous': 'This link shows several signs of phishing or scams. Close it, and don\u2019t enter any information.'
+};
+
+document.querySelectorAll('.try button').forEach(b => b.addEventListener('click', () => { input.value = b.dataset.u; form.requestSubmit(); }));
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  go.disabled = true; go.textContent = 'Checking\u2026';
+  out.hidden = false; out.removeAttribute('data-v'); out.replaceChildren(el('div', 'busy', 'Following the link and running checks\u2026'));
+  try {
+    const r = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: input.value }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.message || 'Something went wrong. Try again.');
+    render(data);
+  } catch (err) {
+    out.replaceChildren(el('div', 'err', err.message));
+  } finally {
+    go.disabled = false; go.textContent = 'Check link';
+  }
+});
+
+function render(d) {
+  out.dataset.v = d.verdict;
+  const head = el('div', 'verdict');
+
+  const g = el('div', 'gauge');
+  g.innerHTML = '<svg viewBox="0 0 200 112" aria-hidden="true"><path class="track" d="M12 104A88 88 0 0 1 188 104" fill="none" stroke-width="16" stroke-linecap="round" pathLength="100"/><path class="val" d="M12 104A88 88 0 0 1 188 104" fill="none" stroke-width="16" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>';
+  const num = el('div', 'num', String(d.score)); num.append(el('small', null, 'risk score out of 100'));
+  g.append(num);
+  requestAnimationFrame(() => requestAnimationFrame(() => g.querySelector('.val').setAttribute('stroke-dasharray', Math.max(d.score, 1) + ' 100')));
+
+  const vt = el('div', 'vtext');
+  vt.append(el('h2', null, d.headline), el('p', null, SUBS[d.verdict]));
+  if (d.finalUrl && d.finalUrl !== d.url) vt.append(el('div', 'dest', 'Lands on: ' + d.finalUrl));
+  head.append(g, vt);
+
+  const cols = el('div', 'cols');
+  const fCol = el('div'); fCol.append(el('h3', null, 'What we found'));
+  const fl = el('ul');
+  d.findings.forEach(f => {
+    const li = el('li', 'f ' + f.severity.toLowerCase());
+    li.append(el('b', null, f.check), el('span', null, f.message));
+    if (f.score > 0) li.append(el('em', null, '+' + f.score));
+    fl.append(li);
+  });
+  fCol.append(fl);
+
+  const tCol = el('div'); tCol.append(el('h3', null, 'Where the link goes'));
+  const tl = el('ol');
+  d.hops.forEach((h, i) => {
+    const last = i === d.hops.length - 1;
+    const li = el('li', 'hop' + (last ? ' end' : ''));
+    if (last) li.append(el('div', 'you', d.fetchError ? 'Stopped here' : 'You would land here'));
+    li.append(el('code', null, h.url), el('span', 'st', h.status ? 'HTTP ' + h.status : 'no response'));
+    tl.append(li);
+  });
+  tCol.append(tl);
+
+  cols.append(fCol, tCol);
+  const note = el('p', 'note', 'Checked in ' + (d.millis / 1000).toFixed(1) + 's. We read the page as text and never run its code. No automated check can prove a link is safe, so treat this as a second opinion.');
+  out.replaceChildren(head, cols, note);
+  out.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
